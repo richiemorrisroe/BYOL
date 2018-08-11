@@ -237,3 +237,193 @@ int main() {
 #+END_SRC
 
 - statements: if, do-while, while, for, switch, break, continue, goto, return
+
+*** Chapter 4: REPL
+
+- first, we'll build an interactive prompt
+- this will merely echo back what is put in
+- allows us to get comfortable with the plumbing for our future interpreter
+
+
+#+BEGIN_SRC C 
+#include <stdio.h>
+
+
+static char input[2048];
+
+int main(int argc, char** argv) {
+
+  puts("Lispy version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+
+  while(1) {
+
+    fputs("lispy> ", stdout);
+
+    fgets(input, 2048, stdin);
+
+    printf("No you're a %s", input);
+
+  }
+
+
+}
+#+END_SRC
+
+
+- this works, but if run in a terminal, it can't handle C-a and C-e.
+- essentially, we need to implement readline
+- this is what we'll do below
+
+#+BEGIN_SRC C :tangle 
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <editline/readline.h>
+#include <editline/history.h>
+
+int main(int argc, char** argv) {
+
+  puts("Lispy version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+
+  while(1) {
+    char* input = readline("lispy> ");
+
+    add_history(input);
+
+    printf("No you're an %s\n", input);
+
+    free(input);
+  }
+  return 0;
+}
+
+#+END_SRC
+
+- this program fails, unless this command has been previously run
+
+#+BEGIN_SRC sh
+sudo apt-get install libedit-dev
+#+END_SRC
+
+#+BEGIN_SRC sh
+cc -g --std=c99 -Wall -Wpedantic  prompt.c -ledit -o prompt 
+#+END_SRC
+
+- this is the correct spell
+- the linker is ever hungry for propiatiation
+- more importantly, these are really, really undiscoverable
+
+
+- the preprocessor can help with portability
+- any line that starts with ~#~ is a preprocessor directive
+- can detect OS, and conditionally emit code based on this
+- we use #ifdef, #else and #endif preprocessor statements
+
+#+BEGIN_SRC C 
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef _WIN32
+#include <string.h>
+
+static char buffer[2048];
+
+/* fake readline function */
+char* readline(char* prompt) {
+  fputs(prompt, stdout);
+  fgets(buffer, 2048, stdin);
+  char* cpy = malloc(strlen(buffer)+1);
+  strcpy(cpy, buffer);
+  cpy[strlen(cpy)-1] = '\0';
+  return cpy;
+}
+
+/*fake add_history function*/
+void add_history(char* unused) {}
+
+/*otherwise include editline headers*/
+#else
+#include <editline/readline.h>
+#include <editline/history.h>
+#endif
+
+int main(int argc, char** argv) {
+  puts("Lispy Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+
+  while(1) {
+    char* input = readline("lispy> ");
+    add_history(input);
+    printf("No, you're an %s\n", input);
+    free(input);
+    
+
+  }
+  return 0;
+}
+#+END_SRC
+
+
+**** Exercises
+#+BEGIN_SRC C :tangle prompt.c
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef _WIN32
+#include <string.h>
+
+static char buffer[2048];
+
+/* fake readline function */
+char* readline(char* prompt) {
+  fputs(prompt, stdout);
+  fgets(buffer, 2048, stdin);
+  char* cpy = malloc(strlen(buffer)+1);
+  strcpy(cpy, buffer);
+  cpy[strlen(cpy)-1] = '\0';
+  return cpy;
+}
+
+/*fake add_history function*/
+void add_history(char* unused) {}
+
+/*otherwise include editline headers*/
+#else
+#include <editline/readline.h>
+#include <editline/history.h>
+#endif
+
+#include <string.h>
+
+int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+
+  while(1) {
+    char* input = readline("rlisp> ");
+    add_history(input);
+    int len = strlen(input);
+    printf("%s is %d characters long", input, len);
+    printf("\n");
+    free(input);
+    
+
+  }
+  return 0;
+}
+#+END_SRC
+
+- so, running this from a comint buffer *shell* creates an echo before the form is evaluated
+- running this in the terminal does not
+- weird. 
+
+- we have many many arguments to printf (documented [[https://en.cppreference.com/w/c/io/fprintf][here]] )
+- there are safe versions since c11
+- these cause errors if (amongst other things), a null pointer is present in any of the arguments
+- if you use the wrong format strings for the printf calls above, you get garbage. ~%d~ and ~%x~ returned the same garbage for any input
+- ~%n~ caused seg faults
+- weird wanting a pointer, dunno what the deal was
+- can just use ~%d~ to report numbers
+- ifdef `__linux__` to conditionally include libraries

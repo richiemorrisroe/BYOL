@@ -1,23 +1,45 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-static char input[2048];
+#ifdef _WIN32
+#include <string.h>
+
+static char buffer[2048];
+
+/* fake readline function */
+char* readline(char* prompt) {
+  fputs(prompt, stdout);
+  fgets(buffer, 2048, stdin);
+  char* cpy = malloc(strlen(buffer)+1);
+  strcpy(cpy, buffer);
+  cpy[strlen(cpy)-1] = '\0';
+  return cpy;
+}
+
+/*fake add_history function*/
+void add_history(char* unused) {}
+
+/*otherwise include editline headers*/
+#else
+#include <editline/readline.h>
+#include <editline/history.h>
+#endif
+
+#include <string.h>
 
 int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
 
-  puts("Lispy version 0.0.0.0.1");
-  puts("Press Ctrl+c to Exit\n");
+  while(1) {
+    char* input = readline("rlisp> ");
+    add_history(input);
+    int len = strlen(input);
+    printf("%s is %d characters long", input, len);
+    printf("\n");
+    free(input);
+    
 
-  /*in a never ending loop*/
-  while (1) {
-
-    /*output a prompt*/
-    fputs("lispy> ", stdout);
-
-    /*read a line of user input of max size 2048*/
-    fgets(input, 2048, stdin);
-
-    /*Echo input back to user*/
-    printf("No, you're a %s", input);
   }
-  return(0);
+  return 0;
 }
