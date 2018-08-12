@@ -6,7 +6,7 @@
 
 - it starts, obviously enough, with hello_world
 
-#+BEGIN_SRC c :tangle hello_world.c
+#+BEGIN_SRC c
 #include <stdio.h>
 int main(int argc, char** argv) {
   puts("Hello, world!");
@@ -40,7 +40,7 @@ cc --std=c99 -Wall hello_world.c hello_world
 - first one:
   - print something different
 
-#+BEGIN_SRC c :tangle diff_words.c
+#+BEGIN_SRC c
 #include <stdio.h>
 
 int main() {
@@ -52,7 +52,7 @@ int main() {
 
 - no main
 
-#+BEGIN_SRC c :tangle break.c
+#+BEGIN_SRC c
 #include <stdio.h>
 
 
@@ -93,7 +93,7 @@ gdb a.out
 - we manipulate variables
 - each of these have types
 
-#+BEGIN_SRC C :tangle features.c 
+#+BEGIN_SRC C
 int main() {
   int count;
   int count = 10;
@@ -107,11 +107,9 @@ int main() {
 }
 #+END_SRC
 
-#+RESULTS:
-
 - functions have a return type declaration, a name and a parenthesis filled with arguments
 - 
-#+BEGIN_SRC C  :tangle add.c
+#+BEGIN_SRC C
 #include <stdio.h>
 int add_together(int x, int y) {
   int result = x + y;
@@ -126,25 +124,10 @@ int main() {
 }
 #+END_SRC
 
-#+RESULTS:
-- OK, so C will silently convert the type of the argument to the type it expects
-- the above add program returns 4, not 4.5
-
-- hmmm, *gdb* is pretty rocking
-- GDB commands (for future reference)
-  - step (take one step)
-  - break fn_name (create breakpoint)
-  - next (next statement, don't step into function)
-  - file (load file with debugging symbols)
-
-- variable start out with garbage
-- they only resolve after the step
-- ~-g~ option adds debug symbols
-
 
 - Structures are used to declare new types
 - several variables bundled together
-#+BEGIN_SRC C :tangle struct.c
+#+BEGIN_SRC C
 #include <stdio.h>
 #include <math.h>
 typedef struct {
@@ -191,7 +174,7 @@ cc -g --std=c99 -Wall -Wpedantic  struct.c -o str.c -lm
 **** Exercises
 
 
-#+BEGIN_SRC C :tangle for_hw.c
+#+BEGIN_SRC C
 #include <stdio.h>
 
 int main() {
@@ -202,7 +185,7 @@ int main() {
 }
 #+END_SRC
 
-#+BEGIN_SRC C :tangle while_hw.c
+#+BEGIN_SRC C
 #include <stdio.h>
 
 int main() {
@@ -218,7 +201,7 @@ int main() {
 #+END_SRC
 
 
-#+BEGIN_SRC C :tangle func_hw.c
+#+BEGIN_SRC C
 #include <stdio.h>
 
 void print_hw(int n) {
@@ -245,7 +228,7 @@ int main() {
 - allows us to get comfortable with the plumbing for our future interpreter
 
 
-#+BEGIN_SRC C 
+#+BEGIN_SRC C
 #include <stdio.h>
 
 
@@ -275,7 +258,7 @@ int main(int argc, char** argv) {
 - essentially, we need to implement readline
 - this is what we'll do below
 
-#+BEGIN_SRC C :tangle 
+#+BEGIN_SRC C
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -321,7 +304,7 @@ cc -g --std=c99 -Wall -Wpedantic  prompt.c -ledit -o prompt
 - can detect OS, and conditionally emit code based on this
 - we use #ifdef, #else and #endif preprocessor statements
 
-#+BEGIN_SRC C 
+#+BEGIN_SRC C
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -367,7 +350,7 @@ int main(int argc, char** argv) {
 
 
 **** Exercises
-#+BEGIN_SRC C :tangle prompt.c
+#+BEGIN_SRC C
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -427,3 +410,250 @@ int main(int argc, char** argv) {
 - weird wanting a pointer, dunno what the deal was
 - can just use ~%d~ to report numbers
 - ifdef `__linux__` to conditionally include libraries
+*** Chapter 5: languages
+
+- using a parser combinator he wrote, called mpc. 
+
+- tells people not to worry about running the code for now, focus on the ideas. 
+#+BEGIN_SRC C
+//this is the Doge grammar
+
+mpc_parser_t* Adjective = mpc_or(4,
+                                mpc_sym("wow"), mpc_sym("many"),
+                                mpc_sym("so"), mpc_sym("such")
+                                );
+
+
+mpc_parser_t* Noun = mpc_or(5,
+                            mpc_sym("lisp"), mpc_sym("language"),
+                            mpc_sym("book"), mpc_sym("build"),
+                            mpc_sym("c"));
+#+END_SRC
+
+- given these two parsers, we can define a new one
+
+#+BEGIN_SRC C
+mpc_parser_t* Phrase = mpc_and(2, mpcf_strfold, Adjective, Noun, free);
+#+END_SRC
+
+-we need to specify that zero or more of some phrase are required
+- this is done with ~mpc_many~
+
+#+BEGIN_SRC C
+mpc_parser_t* Doge = mpc_many(mpcf_strfold, Phrase)
+#+END_SRC
+
+
+- we can slowly build up parsers for more complicated languages
+- this approach doesn't scale that well, and we have a different method, documented below
+
+#+BEGIN_SRC C
+mpc_parser_t* Adjective = mpc_new("adjective");
+mpc_parser_t* Noun = mpc_new("noun");
+mpc_parser_t* Phrase = mpc_new("phrase");
+mpc_parser_t* Doge = mpc_new("doge");
+
+mpca_lang(MPCA_LANG_DEFAULT,
+          "\
+adjective : \"wow\"| \"many\" \
+ | \"so\" \"such\"; \
+noun : \"lisp\" \"language\" \
+| \"book\"| \"build\" | \"c\";\
+phrase : <adjective> <noun>;\
+doge : <phrase>*; \
+",
+          Adjective, Noun, Phrase, Doge);
+
+/* insert parsing here */
+mpc_cleanup(4, Adjective, Noun, Phrase, Doge);
+#+END_SRC
+
+- wow lisp
+- wow build many lisp so c
+- to escape the quotes so that they won't end the string prematurely
+- because C strings are awful
+- and because C is really old
+
+- decimal number grammar:
+  - atom is 0.9
+  - decimal is made up of atom . atom
+  - separated by a dot
+  - can only be one dot
+
+- url grammar:
+  - protocol (http://)
+  - method (www)
+  - tld (.com)
+  - name, [a-z_-]+ (url)
+  - name + tld = path
+  - protocol + method = route
+  - url: route + path
+*** Chapter 6: Parsing
+
+- implement a small grammar (Polish notation)
+- operator comes before operands i.e. + 2 3 4 \ 5
+
+- start by describing the grammar textually
+- later formalise
+- we'll use regexes to match numbers and other strings more precisely
+
+- firstly, we need to get the damn *mpc* library
+- right got it with github
+
+#+BEGIN_SRC sh
+git clone https://github.com/orangeduck/mpc
+cd mpc
+make
+cp mpc.c mpc.h ..
+#+END_SRC
+
+- some small sysadminey stuff up there
+- allows us to #include mpc.h though
+
+
+#+BEGIN_SRC C
+#include <stdio.h>
+#include <stdlib.h>
+#include "mpc.h"
+#ifdef _WIN32
+#include <string.h>
+
+static char buffer[2048];
+
+/* fake readline function */
+char* readline(char* prompt) {
+  fputs(prompt, stdout);
+  fgets(buffer, 2048, stdin);
+  char* cpy = malloc(strlen(buffer)+1);
+  strcpy(cpy, buffer);
+  cpy[strlen(cpy)-1] = '\0';
+  return cpy;
+}
+
+/*fake add_history function*/
+void add_history(char* unused) {}
+
+/*otherwise include editline headers*/
+#else
+#include <editline/readline.h>
+#include <editline/history.h>
+#endif
+
+#include <string.h>
+
+int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+
+  while(1) {
+    char* input = readline("rlisp> ");
+    add_history(input);
+    int len = strlen(input);
+    printf("%s is %d characters long", input, len);
+    printf("\n");
+    free(input);
+    
+
+  }
+  return 0;
+}
+#+END_SRC
+
+
+- he tells us to rename the code, but I can repeat given that I'm using org-mode
+- and attempting to document this process somewhat
+
+#+BEGIN_SRC sh
+cc -std=c99 -Wall parsing.c mpc.c -ledit -lm -o parsing
+#+END_SRC
+#+NAME: polish_parser
+#+BEGIN_SRC C
+mpc_parser_t* Number = mpc_new("number");
+mpc_parser_t* Operator = mpc_new("operator");
+mpc_parser_t* Expr = mpc_new("expr");
+mpc_parser_t* Lispy = mpc_new("lispy");
+
+/* define with the following language */
+mpca_lang(MPCA_LANG_DEFAULT,
+          "\
+           \
+number: /-?[0-9]+/ ; \
+operator: '+' | '-' | '*' | '/';\
+expr: <number> | '(' <operator> <expr>+ ')'; \
+lispy: /^/ <operator> <expr>+ /$/; \
+", Number, Operator, Expr, Lispy);
+
+  
+#+END_SRC
+
+
+
+#+BEGIN_SRC C
+#include <stdio.h>
+#include <stdlib.h>
+#include "mpc.h"
+#ifdef _WIN32
+#include <string.h>
+
+static char buffer[2048];
+
+/* fake readline function */
+char* readline(char* prompt) {
+  fputs(prompt, stdout);
+  fgets(buffer, 2048, stdin);
+  char* cpy = malloc(strlen(buffer)+1);
+  strcpy(cpy, buffer);
+  cpy[strlen(cpy)-1] = '\0';
+  return cpy;
+}
+
+/*fake add_history function*/
+void add_history(char* unused) {}
+
+/*otherwise include editline headers*/
+#else
+#include <editline/readline.h>
+#include <editline/history.h>
+#endif
+
+#include <string.h>
+
+
+int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+  mpc_parser_t* Number = mpc_new("number");
+  mpc_parser_t* Operator = mpc_new("operator");
+  mpc_parser_t* Expr = mpc_new("expr");
+  mpc_parser_t* Lispy = mpc_new("lispy");
+  
+  /* define with the following language */
+  mpca_lang(MPCA_LANG_DEFAULT,
+            "\
+             \
+  number: /-?[0-9]+/ ; \
+  operator: '+' | '-' | '*' | '/';\
+  expr: <number> | '(' <operator> <expr>+ ')'; \
+  lispy: /^/ <operator> <expr>+ /$/; \
+  ", Number, Operator, Expr, Lispy);
+  
+    
+  while(1) {
+    char* input = readline("rlisp> ");
+    add_history(input);
+    int len = strlen(input);
+    printf("%s is %d characters long", input, len);
+    printf("\n");
+    free(input);
+    
+
+  }
+  return 0;
+}
+#+END_SRC
+
+
+- the <<>> syntax above splices in the other code block, before evaluation or tangling
+- that's super nice
+- i can see how people do literate programming now
+- which autocomplteted to noweb, which was a little hilarious
