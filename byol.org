@@ -6,7 +6,7 @@
 
 - it starts, obviously enough, with hello_world
 
-#+BEGIN_SRC c
+#+BEGIN_SRC C :tangle hello_world.c
 #include <stdio.h>
 int main(int argc, char** argv) {
   puts("Hello, world!");
@@ -566,6 +566,8 @@ int main(int argc, char** argv) {
 #+BEGIN_SRC sh
 cc -std=c99 -Wall parsing.c mpc.c -ledit -lm -o parsing
 #+END_SRC
+
+
 #+NAME: polish_parser
 #+BEGIN_SRC C
 mpc_parser_t* Number = mpc_new("number");
@@ -587,8 +589,60 @@ lispy: /^/ <operator> <expr>+ /$/; \
 #+END_SRC
 
 
+#+NAME: includes
+#+BEGIN_SRC C 
+#include <stdio.h>
+#include <stdlib.h>
+#include "mpc.h"
+#ifdef _WIN32
+#include <string.h>
+
+static char buffer[2048];
+
+/* fake readline function */
+char* readline(char* prompt) {
+  fputs(prompt, stdout);
+  fgets(buffer, 2048, stdin);
+  char* cpy = malloc(strlen(buffer)+1);
+  strcpy(cpy, buffer);
+  cpy[strlen(cpy)-1] = '\0';
+  return cpy;
+}
+
+/*fake add_history function*/
+void add_history(char* unused) {}
+
+/*otherwise include editline headers*/
+#else
+#include <editline/readline.h>
+#include <editline/history.h>
+#endif
+
+#include <string.h>
+
+#+END_SRC
+#+NAME: while_loop
+#+BEGIN_SRC C
+  while(1) {
+    char* input = readline("rlisp> ");
+    add_history(input);
+    int len = strlen(input);
+    printf("%s is %d characters long", input, len);
+    printf("\n");
+    free(input);
+    
+
+  }
+#+END_SRC
 
 #+BEGIN_SRC C
+int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+#+END_SRC
+
+
+#+BEGIN_SRC C 
 #include <stdio.h>
 #include <stdlib.h>
 #include "mpc.h"
@@ -657,3 +711,14 @@ int main(int argc, char** argv) {
 - that's super nice
 - i can see how people do literate programming now
 - which autocomplteted to noweb, which was a little hilarious
+
+#+BEGIN_SRC C :tangle prompt.c :noweb yes
+<<includes>>
+int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+  <<polish_parser>>
+  <<while_loop>>
+      return 0;
+  }
+#+END_SRC
