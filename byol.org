@@ -712,7 +712,7 @@ int main(int argc, char** argv) {
 - i can see how people do literate programming now
 - which autocomplteted to noweb, which was a little hilarious
 
-#+BEGIN_SRC C :tangle prompt.c :noweb yes
+#+BEGIN_SRC C :noweb yes
 <<includes>>
 int main(int argc, char** argv) {
   puts("RichLisp Version 0.0.0.1");
@@ -722,3 +722,85 @@ int main(int argc, char** argv) {
       return 0;
   }
 #+END_SRC
+
+- next, we attempt to compile this to make sure nothing is broken
+
+#+BEGIN_SRC shell
+cc -std=c99 -Wall parsing.c mpc.c -ledit -lm -o parsing
+#+END_SRC
+
+
+- next, we need to actually use the parser we've built
+- we can do this by editing our while loop
+#+NAME: mpc_parse
+#+BEGIN_SRC C
+mpc_result_t r;
+if (mpc_parse("<stdin>", input, Lispy, &r)) {
+  /* On success print AST */
+  mpc_ast_print(r.output);
+  mpc_ast_delete(r.output);
+ } else {
+  /*OTherwise print error*/
+  mpc_err_print(r.error);
+  mpc_err_delete(r.error);
+ }
+#+END_SRC
+
+
+#+NAME: while_loop2 
+#+BEGIN_SRC C :noweb yes
+  while(1) {
+    char* input = readline("rlisp> ");
+    add_history(input);
+    mpc_result_t r;
+if (mpc_parse("<stdin>", input, Lispy, &r)) {
+  /* On success print AST */
+  mpc_ast_print(r.output);
+  mpc_ast_delete(r.output);
+ } else {
+  /*OTherwise print error*/
+  mpc_err_print(r.error);
+  mpc_err_delete(r.error);
+ }
+    free(input);
+  }
+#+END_SRC
+
+- so we create a result object, attempt to parse the AST
+
+#+BEGIN_SRC C :tangle parsing.c :noweb yes
+<<includes>>
+int main(int argc, char** argv) {
+  puts("RichLisp Version 0.0.0.1");
+  puts("Press Ctrl+C to Exit\n");
+  <<polish_parser>>
+  <<while_loop2>>
+      return 0;
+  }
+#+END_SRC
+
+
+- we use the same incantation to compile as before (i should probably figure out how
+to automate this)
+- cool, this works
+- the parse trees are kinda nice
+#+BEGIN_EXAMPLE
++ 1234 2 (- 34 96 )
+> 
+  regex 
+  operator|char:1:1 '+'
+  expr|number|regex:1:3 '1234'
+  expr|number|regex:1:8 '2'
+  expr|> 
+    char:1:10 '('
+    operator|char:1:11 '-'
+    expr|number|regex:1:13 '34'
+    expr|number|regex:1:16 '96'
+    char:1:19 ')'
+  regex 
+#+END_EXAMPLE
+
+
+- not going to do the exercises now
+**** TODO Complete Chapter 6 Exercises
+*** Chapter Six: 

@@ -27,7 +27,6 @@ void add_history(char* unused) {}
 
 #include <string.h>
 
-
 int main(int argc, char** argv) {
   puts("RichLisp Version 0.0.0.1");
   puts("Press Ctrl+C to Exit\n");
@@ -47,15 +46,20 @@ int main(int argc, char** argv) {
   ", Number, Operator, Expr, Lispy);
   
     
-  while(1) {
-    char* input = readline("rlisp> ");
-    add_history(input);
-    int len = strlen(input);
-    printf("%s is %d characters long", input, len);
-    printf("\n");
-    free(input);
-    mpc_cleanup(4, Number, Operator, Expr, Lispy);
-
+    while(1) {
+      char* input = readline("rlisp> ");
+      add_history(input);
+      mpc_result_t r;
+  if (mpc_parse("<stdin>", input, Lispy, &r)) {
+    /* On success print AST */
+    mpc_ast_print(r.output);
+    mpc_ast_delete(r.output);
+   } else {
+    /*OTherwise print error*/
+    mpc_err_print(r.error);
+    mpc_err_delete(r.error);
+   }
+      free(input);
+    }
+      return 0;
   }
-  return 0;
-}
